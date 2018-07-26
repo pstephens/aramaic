@@ -24,7 +24,6 @@ module Html =
 
     type Attribute =
         | Attribute of string * string
-        | EmptyAttribute of string
 
     type Part =
         | Doctype of string
@@ -55,14 +54,19 @@ module Html =
     let meta attr = VoidElement("meta", attr)
     let p (attr, content) = Element("p", attr, content)
     let param attr = VoidElement("param", attr)
-    let script attr str = RawTextElement("script", attr, str)
-    let span (attr, content) = Element("span", attr, content)
+    let script (attr, str) = RawTextElement("script", attr, str)
     let source attr = VoidElement("source", attr)
+    let span (attr, content) = Element("span", attr, content)
+    let style (attr, str) = RawTextElement("style", attr, str)
+    let title (attr, str) = RCData("title", attr, str)
+    let textarea (attr, str) = RCData("textarea", attr, str)
     let track attr = VoidElement("track", attr)
     let wbr attr = VoidElement("wbr", attr)
 
     let text str = Text(str)
     let (:=) name value = Attribute(name, value)
+
+    let bgcolor = "bgcolor"
 
     type RenderOptions = { indent: string; newline: string }
     let emptyRenderOptions = { indent = ""; newline = "" }
@@ -71,7 +75,14 @@ module Html =
 
     // let renderContent
 
-    // let renderAttributes
+    let rec renderAttributes (wr: TextWriter) = function
+    | Attribute(name, value)::tail ->
+        wr.Write(" ");
+        wr.Write(name);
+        wr.Write("=");
+        wr.Write(value);
+        renderAttributes wr tail
+    | [] -> ()
 
     let renderPart (wr: TextWriter) = function
     | Doctype(str) ->
@@ -81,6 +92,7 @@ module Html =
     | Element(name, attr, content) ->
         wr.Write("<")
         wr.Write(name)
+        renderAttributes wr attr
         wr.Write(">")
         wr.Write("</")
         wr.Write(name)
@@ -89,7 +101,8 @@ module Html =
         wr.Write("<")
         wr.Write(name)
         wr.Write(">")
-    | RawTextElement(name, attr, content) ->
+    | RawTextElement(name, attr, content)
+    | RCData(name, attr, content) ->
         wr.Write("<")
         wr.Write(name)
         wr.Write(">");

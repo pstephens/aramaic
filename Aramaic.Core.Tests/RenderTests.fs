@@ -39,13 +39,23 @@ let ``Basic element should render open and closing tags`` () =
     [ html ([], []) ] |> exerciseRender |> should equal "<html></html>"
 
 [<Fact>]
+let ``Element should render unquoted attributes`` () =
+    [ body([bgcolor:="#FFF"], []) ]
+    |> exerciseRender
+    |> should equal "<body bgcolor=#FFF></body>"
+
+[<Fact>]
 let ``Void element should have no end tag`` () =
     [ br [] ] |> exerciseRender |> should equal "<br>"
 
 [<Fact>]
 let ``Raw text element should render start tag, end tag, and content`` () =
-    [ script [] "if(foo > 5) { console.log('>5') }" ]
+    [ script([], "if(foo > 5) { console.log('>5') }") ]
     |> exerciseRender
     |> should equal "<script>if(foo > 5) { console.log('>5') }</script>"
 
-
+[<Fact>]
+let ``RCData element should render start tag, end tag, and content`` () =
+    [ title([], "Lions, Tigers, & Bears") ]
+    |> exerciseRender
+    |> should equal "<title>Lions, Tigers, & Bears</title>"
