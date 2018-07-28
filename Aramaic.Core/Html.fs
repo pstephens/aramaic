@@ -21,6 +21,7 @@ namespace Aramaic.Core
 open System.IO
 
 module Html =
+    open System
 
     type Attribute =
         | Attribute of string * string
@@ -63,6 +64,13 @@ module Html =
     let track attr = VoidElement("track", attr)
     let wbr attr = VoidElement("wbr", attr)
 
+
+    let booleanAttributes =
+        set [ "async"; "autocomplete"; "autofocus"; "autoplay"; "border"; "challenge"; "checked";
+              "compact";"contenteditable"; "controls"; "default"; "defer"; "disabled"; "formNoValidate";
+              "frameborder"; "hidden"; "indeterminate"; "ismap"; "loop"; "multiple"; "muted"; "nohref";
+              "noresize"; "noshade"; "novalidate"; "nowrap"; "open"; "readonly"; "required"; "reversed";
+              "scoped"; "scrolling"; "seamless"; "selected"; "sortable"; "spellcheck"; "translate" ]
     let text str = Text(str)
     let (:=) name value = Attribute(name, value)
 
@@ -77,10 +85,14 @@ module Html =
 
     let rec renderAttributes (wr: TextWriter) = function
     | Attribute(name, value)::tail ->
-        wr.Write(" ");
-        wr.Write(name);
-        wr.Write("=");
-        wr.Write(value);
+        wr.Write(" ")
+        wr.Write(name)
+        if String.IsNullOrEmpty(value) then
+            if not (Set.contains name booleanAttributes) then
+                wr.Write("=\"\"")
+        else
+            wr.Write("=")
+            wr.Write(value)
         renderAttributes wr tail
     | [] -> ()
 

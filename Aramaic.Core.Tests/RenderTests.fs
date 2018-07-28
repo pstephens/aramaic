@@ -29,6 +29,10 @@ let exerciseRender model =
     render emptyRenderOptions wr model
     wr.GetStringBuilder().ToString()
 
+let exerciseRenderAttributes model =
+    use wr = new StringWriter()
+    renderAttributes wr model
+    wr.GetStringBuilder().ToString()
 
 [<Fact>]
 let ``Should render doctype`` () =
@@ -59,3 +63,15 @@ let ``RCData element should render start tag, end tag, and content`` () =
     [ title([], "Lions, Tigers, & Bears") ]
     |> exerciseRender
     |> should equal "<title>Lions, Tigers, & Bears</title>"
+
+[<Fact>]
+let ``renderAttributes should render regular attributes`` () =
+    [ "foo" := "bar"; "a" := "b" ]
+    |> exerciseRenderAttributes
+    |> should equal """ foo=bar a=b"""
+
+[<Fact>]
+let ``renderAttributes should render empty attributes with missing value`` () =
+    [ "foo" := ""; "a" := null; "nowrap" := null; "disabled" := "" ]
+    |> exerciseRenderAttributes
+    |> should equal """ foo="" a="" nowrap disabled"""
