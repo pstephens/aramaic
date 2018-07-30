@@ -1,0 +1,5 @@
+language: fsharp
+solution: Aramaic.sln
+dotnet: 2.1.302
+script:
+  - dotnet restore
