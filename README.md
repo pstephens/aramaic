@@ -1,6 +1,8 @@
 # Aramaic
 "Serverless" Event Driven Blog Engine
 
+[![Build Status](https://travis-ci.org/pstephens/aramaic.svg?branch=master)](https://travis-ci.org/pstephens/aramaic)
+
 ## **EARLY DAYS**
 
 ## Basic Design
