@@ -1,7 +1,9 @@
-language: csharp
 # Except this isn't really C# -- it's an F# project. Silly Travis.
+language: csharp
 
 solution: Aramaic.sln
+mono: none
 dotnet: 2.1.302
 script:
   - dotnet restore
+  - dotnet test
