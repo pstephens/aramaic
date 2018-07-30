@@ -36,6 +36,70 @@ module Html =
 
     type Document = List<Part>
 
+    module Attribute =
+        let booleanAttributes =
+                set [ "async"; "autocomplete"; "autofocus"; "autoplay"; "border"; "challenge"; "checked";
+                      "compact";"contenteditable"; "controls"; "default"; "defer"; "disabled"; "formNoValidate";
+                      "frameborder"; "hidden"; "indeterminate"; "ismap"; "loop"; "multiple"; "muted"; "nohref";
+                      "noresize"; "noshade"; "novalidate"; "nowrap"; "open"; "readonly"; "required"; "reversed";
+                      "scoped"; "scrolling"; "seamless"; "selected"; "sortable"; "spellcheck"; "translate" ]
+
+        [<Flags>]
+        type CharClass =
+            None = 0
+            | EmptyString = 1
+            | Quot = 2
+            | Apos = 4
+            | Quotable = 8
+            | EveryNonEmptyClass = 14
+
+        let rec classify (str : string, i, acc) =
+            if i >= str.Length then
+                if str.Length = 0 then
+                    CharClass.EmptyString
+                else
+                    acc
+            else
+                let ch = str.[i]
+                if ch = '"' then
+                    classify(str, i + 1, acc ||| CharClass.Quot)
+                else if ch = '\'' then
+                    classify(str, i + 1, acc ||| CharClass.Apos)
+                else if ch = '<' || ch = '>' || ch = '`' || ch = '/' || ch = ' ' || ch = '=' then
+                    classify(str, i + 1, acc ||| CharClass.Quotable)
+                else
+                    classify(str, i + 1, acc)
+
+        let rec renderAttributes (wr: TextWriter) = function
+        | Attribute(name, value)::tail ->
+            wr.Write(" ")
+            wr.Write(name)
+            let cls = classify(value, 0, CharClass.None)
+            if cls = CharClass.EmptyString then
+                if not (Set.contains name booleanAttributes) then
+                    wr.Write("=\"\"")
+            else
+                wr.Write("=")
+                if (cls &&& CharClass.Quot) <> CharClass.None then
+                    if(cls &&& CharClass.Apos) <> CharClass.None then
+                        wr.Write("\"")
+                        wr.Write(value.Replace("\"", "&quot;"))
+                        wr.Write("\"")
+                    else
+                        wr.Write("'")
+                        wr.Write(value)
+                        wr.Write("'")
+                else if (cls &&& (CharClass.Apos ||| CharClass.Quotable)) <> CharClass.None then
+                    wr.Write("\"")
+                    wr.Write(value)
+                    wr.Write("\"")
+                else
+                    wr.Write(value)
+
+            renderAttributes wr tail
+        | [] -> ()
+
+
     let doctype str = Doctype(str)
     let html (attr, content) = Element("html", attr, content)
 
@@ -65,12 +129,6 @@ module Html =
     let wbr attr = VoidElement("wbr", attr)
 
 
-    let booleanAttributes =
-        set [ "async"; "autocomplete"; "autofocus"; "autoplay"; "border"; "challenge"; "checked";
-              "compact";"contenteditable"; "controls"; "default"; "defer"; "disabled"; "formNoValidate";
-              "frameborder"; "hidden"; "indeterminate"; "ismap"; "loop"; "multiple"; "muted"; "nohref";
-              "noresize"; "noshade"; "novalidate"; "nowrap"; "open"; "readonly"; "required"; "reversed";
-              "scoped"; "scrolling"; "seamless"; "selected"; "sortable"; "spellcheck"; "translate" ]
     let text str = Text(str)
     let (:=) name value = Attribute(name, value)
 
@@ -83,19 +141,6 @@ module Html =
 
     // let renderContent
 
-    let rec renderAttributes (wr: TextWriter) = function
-    | Attribute(name, value)::tail ->
-        wr.Write(" ")
-        wr.Write(name)
-        if String.IsNullOrEmpty(value) then
-            if not (Set.contains name booleanAttributes) then
-                wr.Write("=\"\"")
-        else
-            wr.Write("=")
-            wr.Write(value)
-        renderAttributes wr tail
-    | [] -> ()
-
     let renderPart (wr: TextWriter) = function
     | Doctype(str) ->
         wr.Write("<!doctype ")
@@ -104,7 +149,7 @@ module Html =
     | Element(name, attr, content) ->
         wr.Write("<")
         wr.Write(name)
-        renderAttributes wr attr
+        Attribute.renderAttributes wr attr
         wr.Write(">")
         wr.Write("</")
         wr.Write(name)

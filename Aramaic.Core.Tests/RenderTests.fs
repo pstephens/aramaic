@@ -31,7 +31,7 @@ let exerciseRender model =
 
 let exerciseRenderAttributes model =
     use wr = new StringWriter()
-    renderAttributes wr model
+    Attribute.renderAttributes wr model
     wr.GetStringBuilder().ToString()
 
 [<Fact>]
@@ -72,6 +72,20 @@ let ``renderAttributes should render regular attributes`` () =
 
 [<Fact>]
 let ``renderAttributes should render empty attributes with missing value`` () =
-    [ "foo" := ""; "a" := null; "nowrap" := null; "disabled" := "" ]
+    [ "foo" := ""; "disabled" := "" ]
     |> exerciseRenderAttributes
-    |> should equal """ foo="" a="" nowrap disabled"""
+    |> should equal """ foo="" disabled"""
+
+[<Theory>]
+[<InlineData("'foo bar'", " a=\"'foo bar'\"")>]
+[<InlineData("\"foo bar\"", " a='\"foo bar\"'")>]
+[<InlineData("x=y", " a=\"x=y\"")>]
+[<InlineData("5>4", " a=\"5>4\"")>]
+[<InlineData("4<5", " a=\"4<5\"")>]
+[<InlineData("a`b`c", " a=\"a`b`c\"")>]
+[<InlineData("contains space", " a=\"contains space\"")>]
+[<InlineData("contains/slash", " a=\"contains/slash\"")>]
+[<InlineData("\"'", " a=\"&quot;'\"")>]
+[<InlineData("", " a=\"\"")>]
+let ``renderAttributes should quote as appropriate`` (value, expected) =
+    [ "a" := value ] |> exerciseRenderAttributes |> should equal expected
