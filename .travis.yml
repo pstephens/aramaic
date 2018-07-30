@@ -6,4 +6,4 @@ mono: none
 dotnet: 2.1.302
 script:
   - dotnet restore
-  - dotnet test
+  - dotnet test ./Aramaic.Core.Tests/Aramaic.Core.Tests.fsproj
