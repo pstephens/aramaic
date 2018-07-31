@@ -23,21 +23,17 @@ open System.IO
 module Html =
     open System
 
-    type Attribute =
-        | Attribute of string * string
-
-    type Part =
-        | Doctype of string
-        | Element of string * List<Attribute> * List<Part>
-        | VoidElement of string * List<Attribute>
-        | RawTextElement of string * List<Attribute> * string
-        | RCData of string * List<Attribute> * string
-        | Text of string
-
-    type Document = List<Part>
-
     module Attribute =
-        let booleanAttributes =
+        type Attribute =
+            | Attribute of string * string
+
+        let (:=) name value = Attribute(name, value)
+
+        let bgcolor = "bgcolor"
+        let href = "href"
+        let style = "style"
+
+        let private booleanAttributes =
                 set [ "async"; "autocomplete"; "autofocus"; "autoplay"; "border"; "challenge"; "checked";
                       "compact";"contenteditable"; "controls"; "default"; "defer"; "disabled"; "formNoValidate";
                       "frameborder"; "hidden"; "indeterminate"; "ismap"; "loop"; "multiple"; "muted"; "nohref";
@@ -45,7 +41,7 @@ module Html =
                       "scoped"; "scrolling"; "seamless"; "selected"; "sortable"; "spellcheck"; "translate" ]
 
         [<Flags>]
-        type CharClass =
+        type private CharClass =
             None = 0
             | EmptyString = 1
             | Quot = 2
@@ -53,7 +49,7 @@ module Html =
             | Quotable = 8
             | EveryNonEmptyClass = 14
 
-        let rec classify (str : string, i, acc) =
+        let rec private classify (str : string, i, acc) =
             if i >= str.Length then
                 if str.Length = 0 then
                     CharClass.EmptyString
@@ -65,7 +61,7 @@ module Html =
                     classify(str, i + 1, acc ||| CharClass.Quot)
                 else if ch = '\'' then
                     classify(str, i + 1, acc ||| CharClass.Apos)
-                else if ch = '<' || ch = '>' || ch = '`' || ch = '/' || ch = ' ' || ch = '=' then
+                else if ch = '<' || ch = '>' || ch = '`' || ch = ' ' || ch = '=' then
                     classify(str, i + 1, acc ||| CharClass.Quotable)
                 else
                     classify(str, i + 1, acc)
@@ -99,12 +95,22 @@ module Html =
             renderAttributes wr tail
         | [] -> ()
 
+    type Part =
+        | Doctype of string
+        | Element of string * List<Attribute.Attribute> * List<Part>
+        | VoidElement of string * List<Attribute.Attribute>
+        | RawTextElement of string * List<Attribute.Attribute> * string
+        | RCData of string * List<Attribute.Attribute> * string
+        | Text of string
+
+    type Document = List<Part>
+
 
     let doctype str = Doctype(str)
     let html (attr, content) = Element("html", attr, content)
 
     let area attr = VoidElement("area", attr)
-    let base' attr = VoidElement("base", attr)
+    let baseEl attr = VoidElement("base", attr)
     let body (attr, content) = Element("body", attr, content)
     let br attr = VoidElement("br", attr)
     let col attr = VoidElement("col", attr)
@@ -122,26 +128,25 @@ module Html =
     let script (attr, str) = RawTextElement("script", attr, str)
     let source attr = VoidElement("source", attr)
     let span (attr, content) = Element("span", attr, content)
-    let style (attr, str) = RawTextElement("style", attr, str)
+    let styleEl (attr, str) = RawTextElement("style", attr, str)
     let title (attr, str) = RCData("title", attr, str)
     let textarea (attr, str) = RCData("textarea", attr, str)
     let track attr = VoidElement("track", attr)
     let wbr attr = VoidElement("wbr", attr)
 
-
     let text str = Text(str)
-    let (:=) name value = Attribute(name, value)
-
-    let bgcolor = "bgcolor"
 
     type RenderOptions = { indent: string; newline: string }
     let emptyRenderOptions = { indent = ""; newline = "" }
     let prettyRenderOptions = { indent = "\t"; newline = "\n" }
 
+    let rec private renderContent (wr: TextWriter) = function
+    | part :: tail ->
+        renderPart wr part
+        renderContent wr tail
+    | [] -> ()
 
-    // let renderContent
-
-    let renderPart (wr: TextWriter) = function
+    and renderPart (wr: TextWriter) = function
     | Doctype(str) ->
         wr.Write("<!doctype ")
         wr.Write(str)
@@ -151,24 +156,26 @@ module Html =
         wr.Write(name)
         Attribute.renderAttributes wr attr
         wr.Write(">")
+        renderContent wr content
         wr.Write("</")
         wr.Write(name)
         wr.Write(">")
     | VoidElement(name, attr) ->
         wr.Write("<")
         wr.Write(name)
+        Attribute.renderAttributes wr attr
         wr.Write(">")
     | RawTextElement(name, attr, content)
     | RCData(name, attr, content) ->
         wr.Write("<")
         wr.Write(name)
-        wr.Write(">");
-        wr.Write(content);
-        wr.Write("</");
-        wr.Write(name);
-        wr.Write(">");
-    | _ ->
-        wr.Write("**unknown**")
+        Attribute.renderAttributes wr attr
+        wr.Write(">")
+        wr.Write(content)
+        wr.Write("</")
+        wr.Write(name)
+        wr.Write(">")
+    | Text(str) -> wr.Write(str)
 
     let render (opt: RenderOptions) (wr: TextWriter) (doc: Document) =
         doc |> List.iter (fun p -> renderPart wr p)

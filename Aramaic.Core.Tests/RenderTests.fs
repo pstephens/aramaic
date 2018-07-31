@@ -23,6 +23,7 @@ open System.IO
 open Xunit
 open FsUnit.Xunit
 open Aramaic.Core.Html
+open Aramaic.Core.Html.Attribute
 
 let exerciseRender model =
     use wr = new StringWriter()
@@ -49,8 +50,24 @@ let ``Element should render unquoted attributes`` () =
     |> should equal "<body bgcolor=#FFF></body>"
 
 [<Fact>]
+let ``Element should render inner content`` () =
+    [ body([],
+        [ div([],
+            [ text("foo")
+              br([])
+              text("more text")])])]
+    |> exerciseRender
+    |> should equal "<body><div>foo<br>more text</div></body>"
+
+[<Fact>]
 let ``Void element should have no end tag`` () =
     [ br [] ] |> exerciseRender |> should equal "<br>"
+
+[<Fact>]
+let ``Void element should render attributes`` () =
+    [ br [ href := "email:foo@bar.com" ] ]
+    |> exerciseRender
+    |> should equal """<br href=email:foo@bar.com>"""
 
 [<Fact>]
 let ``Raw text element should render start tag, end tag, and content`` () =
@@ -59,10 +76,26 @@ let ``Raw text element should render start tag, end tag, and content`` () =
     |> should equal "<script>if(foo > 5) { console.log('>5') }</script>"
 
 [<Fact>]
+let ``Raw text element should render attributes`` () =
+    [ styleEl(["src":="./styles.css"; "type":="text/css"], "foo") ]
+    |> exerciseRender
+    |> should equal "<style src=./styles.css type=text/css>foo</style>"
+
+[<Fact>]
 let ``RCData element should render start tag, end tag, and content`` () =
     [ title([], "Lions, Tigers, & Bears") ]
     |> exerciseRender
     |> should equal "<title>Lions, Tigers, & Bears</title>"
+
+[<Fact>]
+let ``RCData element should render attributes`` () =
+    [ title([ "foo":="bar" ], "This is a title") ]
+    |> exerciseRender
+    |> should equal "<title foo=bar>This is a title</title>"
+
+[<Fact>]
+let ``Text should render as plain text`` () =
+    [ text("this is some text") ] |> exerciseRender |> should equal "this is some text"
 
 [<Fact>]
 let ``renderAttributes should render regular attributes`` () =
@@ -84,7 +117,7 @@ let ``renderAttributes should render empty attributes with missing value`` () =
 [<InlineData("4<5", " a=\"4<5\"")>]
 [<InlineData("a`b`c", " a=\"a`b`c\"")>]
 [<InlineData("contains space", " a=\"contains space\"")>]
-[<InlineData("contains/slash", " a=\"contains/slash\"")>]
+[<InlineData("contains/slash", " a=contains/slash")>]
 [<InlineData("\"'", " a=\"&quot;'\"")>]
 [<InlineData("", " a=\"\"")>]
 let ``renderAttributes should quote as appropriate`` (value, expected) =
