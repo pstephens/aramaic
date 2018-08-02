@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="RenderTests.fs" />
+    <Compile Include="FromMarkdownTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

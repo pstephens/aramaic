@@ -19,6 +19,7 @@ limitations under the License.
 namespace Aramaic.Core
 
 open System.IO
+open FSharp.Markdown
 
 module Html =
     open System
@@ -117,6 +118,11 @@ module Html =
     let command attr = VoidElement("command", attr)
     let div (attr, content) = Element("div", attr, content)
     let embed attr = VoidElement("embed", attr)
+    let h1 (attr, content) = Element("h1", attr, content)
+    let h2 (attr, content) = Element("h2", attr, content)
+    let h3 (attr, content) = Element("h3", attr, content)
+    let h4 (attr, content) = Element("h4", attr, content)
+    let h5 (attr, content) = Element("h5", attr, content)
     let hr attr = VoidElement("hr", attr)
     let img attr = VoidElement("img", attr)
     let input attr = VoidElement("input", attr)
@@ -179,3 +185,17 @@ module Html =
 
     let render (opt: RenderOptions) (wr: TextWriter) (doc: Document) =
         doc |> List.iter (fun p -> renderPart wr p)
+
+    let fromSpan (span: MarkdownSpan) : Part =
+        match span with
+        | Literal(t) -> text(t)
+
+    let fromSpans (spans : MarkdownSpans) : List<Part> =
+        spans |> List.map fromSpan
+
+    let fromParagraph (par : MarkdownParagraph) : Part =
+        match par with
+        | Heading(1, spans) -> h1([], fromSpans spans)
+
+    let fromMarkdown (doc : MarkdownDocument) : Document =
+        doc.Paragraphs |> List.map fromParagraph
