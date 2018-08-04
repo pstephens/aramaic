@@ -116,7 +116,9 @@ module Html =
     let br attr = VoidElement("br", attr)
     let col attr = VoidElement("col", attr)
     let command attr = VoidElement("command", attr)
+    let code (attr, content) = Element("code", attr, content)
     let div (attr, content) = Element("div", attr, content)
+    let em (attr, content) = Element("em", attr, content)
     let embed attr = VoidElement("embed", attr)
     let h1 (attr, content) = Element("h1", attr, content)
     let h2 (attr, content) = Element("h2", attr, content)
@@ -134,6 +136,7 @@ module Html =
     let script (attr, str) = RawTextElement("script", attr, str)
     let source attr = VoidElement("source", attr)
     let span (attr, content) = Element("span", attr, content)
+    let strong (attr, content) = Element("strong", attr, content)
     let styleEl (attr, str) = RawTextElement("style", attr, str)
     let title (attr, str) = RCData("title", attr, str)
     let textarea (attr, str) = RCData("textarea", attr, str)
@@ -186,16 +189,20 @@ module Html =
     let render (opt: RenderOptions) (wr: TextWriter) (doc: Document) =
         doc |> List.iter (fun p -> renderPart wr p)
 
-    let fromSpan (span: MarkdownSpan) : Part =
+    let rec fromSpan (span: MarkdownSpan) : Part =
         match span with
         | Literal(t) -> text(t)
+        | InlineCode(content) -> code([], [ text(content) ])
+        | Strong(content) -> strong([], fromSpans(content))
+        | Emphasis(content) -> em([], fromSpans(content))
 
-    let fromSpans (spans : MarkdownSpans) : List<Part> =
+    and fromSpans (spans : MarkdownSpans) : List<Part> =
         spans |> List.map fromSpan
 
     let fromParagraph (par : MarkdownParagraph) : Part =
         match par with
         | Heading(1, spans) -> h1([], fromSpans spans)
+        | Paragraph(spans) -> p([], fromSpans spans)
 
     let fromMarkdown (doc : MarkdownDocument) : Document =
         doc.Paragraphs |> List.map fromParagraph
