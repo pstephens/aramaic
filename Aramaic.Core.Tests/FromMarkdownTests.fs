@@ -23,6 +23,8 @@ open FsUnit.Xunit
 open FSharp.Markdown
 
 module FromMarkdownTests =
+    open Attribute
+
     let exerciseTransform doc = Aramaic.Core.Html.fromMarkdown doc
 
     [<Fact>]
@@ -51,3 +53,33 @@ module FromMarkdownTests =
                                   text(" and also ")
                                   em([], [ text("emphasized") ])
                                 ])]
+
+    [<Fact>]
+    let ``Should render IndirectLink`` () =
+        Markdown.Parse """[a][b]  [c]  [a **bad** link][d]
+
+[b]: http://b.com
+[c]: http://c.com "label"
+        """
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ a([href:="http://b.com"], [ text("a") ])
+                      text("  ")
+                      a([href:="http://c.com"; title:="label"], [ text("c") ])
+                      text("  ")
+                      a([], [ text("a "); strong([], [text("bad")]); text(" link")])])]
+
+    [<Fact>]
+    let ``Should render AnchorLink`` () =
+        MarkdownDocument([ Paragraph [ AnchorLink "foo" ] ], null)
+        |> exerciseTransform
+        |> should equal [ p([], [ a([name:="foo"], []) ] ) ]
+
+    [<Fact>]
+    let ``Should render DirectLink`` () =
+        Markdown.Parse """[a](http://a.com/ "the title") [b](http://b.com/)"""
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ a([href:="http://a.com/"; title:="the title"], [ text("a") ])
+                      text(" ")
+                      a([href:="http://b.com/"], [ text("b") ]) ])]

@@ -83,13 +83,13 @@ let ``Raw text element should render attributes`` () =
 
 [<Fact>]
 let ``RCData element should render start tag, end tag, and content`` () =
-    [ title([], "Lions, Tigers, & Bears") ]
+    [ titleEl([], "Lions, Tigers, & Bears") ]
     |> exerciseRender
     |> should equal "<title>Lions, Tigers, & Bears</title>"
 
 [<Fact>]
 let ``RCData element should render attributes`` () =
-    [ title([ "foo":="bar" ], "This is a title") ]
+    [ titleEl([ "foo":="bar" ], "This is a title") ]
     |> exerciseRender
     |> should equal "<title foo=bar>This is a title</title>"
 

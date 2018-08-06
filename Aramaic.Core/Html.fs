@@ -28,11 +28,13 @@ module Html =
         type Attribute =
             | Attribute of string * string
 
-        let (:=) name value = Attribute(name, value)
+        let inline (:=) name value = Attribute(name, value)
 
         let bgcolor = "bgcolor"
         let href = "href"
+        let name = "name"
         let style = "style"
+        let title = "title"
 
         let private booleanAttributes =
                 set [ "async"; "autocomplete"; "autofocus"; "autoplay"; "border"; "challenge"; "checked";
@@ -96,6 +98,9 @@ module Html =
             renderAttributes wr tail
         | [] -> ()
 
+    open Attribute
+
+
     type Part =
         | Doctype of string
         | Element of string * List<Attribute.Attribute> * List<Part>
@@ -110,40 +115,41 @@ module Html =
     let doctype str = Doctype(str)
     let html (attr, content) = Element("html", attr, content)
 
-    let area attr = VoidElement("area", attr)
-    let baseEl attr = VoidElement("base", attr)
-    let body (attr, content) = Element("body", attr, content)
-    let br attr = VoidElement("br", attr)
-    let col attr = VoidElement("col", attr)
-    let command attr = VoidElement("command", attr)
-    let code (attr, content) = Element("code", attr, content)
-    let div (attr, content) = Element("div", attr, content)
-    let em (attr, content) = Element("em", attr, content)
-    let embed attr = VoidElement("embed", attr)
-    let h1 (attr, content) = Element("h1", attr, content)
-    let h2 (attr, content) = Element("h2", attr, content)
-    let h3 (attr, content) = Element("h3", attr, content)
-    let h4 (attr, content) = Element("h4", attr, content)
-    let h5 (attr, content) = Element("h5", attr, content)
-    let hr attr = VoidElement("hr", attr)
-    let img attr = VoidElement("img", attr)
-    let input attr = VoidElement("input", attr)
-    let keygen attr = VoidElement("keygen", attr)
-    let link attr = VoidElement("link", attr)
-    let meta attr = VoidElement("meta", attr)
-    let p (attr, content) = Element("p", attr, content)
-    let param attr = VoidElement("param", attr)
-    let script (attr, str) = RawTextElement("script", attr, str)
-    let source attr = VoidElement("source", attr)
-    let span (attr, content) = Element("span", attr, content)
-    let strong (attr, content) = Element("strong", attr, content)
-    let styleEl (attr, str) = RawTextElement("style", attr, str)
-    let title (attr, str) = RCData("title", attr, str)
-    let textarea (attr, str) = RCData("textarea", attr, str)
-    let track attr = VoidElement("track", attr)
-    let wbr attr = VoidElement("wbr", attr)
+    let inline a (attr, content) = Element("a", attr, content)
+    let inline area attr = VoidElement("area", attr)
+    let inline baseEl attr = VoidElement("base", attr)
+    let inline body (attr, content) = Element("body", attr, content)
+    let inline br attr = VoidElement("br", attr)
+    let inline col attr = VoidElement("col", attr)
+    let inline command attr = VoidElement("command", attr)
+    let inline code (attr, content) = Element("code", attr, content)
+    let inline div (attr, content) = Element("div", attr, content)
+    let inline em (attr, content) = Element("em", attr, content)
+    let inline embed attr = VoidElement("embed", attr)
+    let inline h1 (attr, content) = Element("h1", attr, content)
+    let inline h2 (attr, content) = Element("h2", attr, content)
+    let inline h3 (attr, content) = Element("h3", attr, content)
+    let inline h4 (attr, content) = Element("h4", attr, content)
+    let inline h5 (attr, content) = Element("h5", attr, content)
+    let inline hr attr = VoidElement("hr", attr)
+    let inline img attr = VoidElement("img", attr)
+    let inline input attr = VoidElement("input", attr)
+    let inline keygen attr = VoidElement("keygen", attr)
+    let inline link attr = VoidElement("link", attr)
+    let inline meta attr = VoidElement("meta", attr)
+    let inline p (attr, content) = Element("p", attr, content)
+    let inline param attr = VoidElement("param", attr)
+    let inline script (attr, str) = RawTextElement("script", attr, str)
+    let inline source attr = VoidElement("source", attr)
+    let inline span (attr, content) = Element("span", attr, content)
+    let inline strong (attr, content) = Element("strong", attr, content)
+    let inline styleEl (attr, str) = RawTextElement("style", attr, str)
+    let inline titleEl (attr, str) = RCData("title", attr, str)
+    let inline textarea (attr, str) = RCData("textarea", attr, str)
+    let inline track attr = VoidElement("track", attr)
+    let inline wbr attr = VoidElement("wbr", attr)
 
-    let text str = Text(str)
+    let inline text str = Text(str)
 
     type RenderOptions = { indent: string; newline: string }
     let emptyRenderOptions = { indent = ""; newline = "" }
@@ -187,22 +193,38 @@ module Html =
     | Text(str) -> wr.Write(str)
 
     let render (opt: RenderOptions) (wr: TextWriter) (doc: Document) =
-        doc |> List.iter (fun p -> renderPart wr p)
+        doc |> List.iter (renderPart wr)
 
-    let rec fromSpan (span: MarkdownSpan) : Part =
-        match span with
+    type IDictionary<'a, 'b> = System.Collections.Generic.IDictionary<'a, 'b>
+
+    type MarkdownCtx =
+        { definedLinks : IDictionary<string, string * option<string>>; }
+
+    let rec fromSpan (ctx : MarkdownCtx) (x: MarkdownSpan) : Part =
+        match x with
         | Literal(t) -> text(t)
         | InlineCode(content) -> code([], [ text(content) ])
-        | Strong(content) -> strong([], fromSpans(content))
-        | Emphasis(content) -> em([], fromSpans(content))
+        | Strong(content) -> strong([], fromSpans ctx content)
+        | Emphasis(content) -> em([], fromSpans ctx content)
+        | IndirectLink(content, _, FSharp.Markdown.Html.LookupKey ctx.definedLinks (link, title'))
+        | DirectLink(content, (link, title')) ->
+            let titleAttr : List<Attribute> =
+                title'
+                |> Option.map(fun t -> [ "title":=t ])
+                |> Option.defaultValue []
+            a( (href:=link) :: titleAttr, fromSpans ctx content)
+        | IndirectLink(content, _, _) ->
+            a([], fromSpans ctx content)
+        | AnchorLink(y) -> a([name:=y], [])
 
-    and fromSpans (spans : MarkdownSpans) : List<Part> =
-        spans |> List.map fromSpan
+    and fromSpans (ctx : MarkdownCtx) (spans : MarkdownSpans) : List<Part> =
+        spans |> List.map (fromSpan ctx)
 
-    let fromParagraph (par : MarkdownParagraph) : Part =
+    let fromParagraph (ctx : MarkdownCtx) (par : MarkdownParagraph) : Part =
         match par with
-        | Heading(1, spans) -> h1([], fromSpans spans)
-        | Paragraph(spans) -> p([], fromSpans spans)
+        | Heading(1, spans) -> h1([], fromSpans ctx spans)
+        | Paragraph(spans) -> p([], fromSpans ctx spans)
 
     let fromMarkdown (doc : MarkdownDocument) : Document =
-        doc.Paragraphs |> List.map fromParagraph
+        let ctx = { definedLinks = doc.DefinedLinks }
+        doc.Paragraphs |> List.map (fromParagraph ctx)
