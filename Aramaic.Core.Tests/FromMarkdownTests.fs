@@ -73,7 +73,7 @@ module FromMarkdownTests =
     let ``Should render AnchorLink`` () =
         MarkdownDocument([ Paragraph [ AnchorLink "foo" ] ], null)
         |> exerciseTransform
-        |> should equal [ p([], [ a([name:="foo"], []) ] ) ]
+        |> should equal [ p([], [ a([name:="foo"], [ text("&#160;") ]) ] ) ]
 
     [<Fact>]
     let ``Should render DirectLink`` () =
@@ -83,3 +83,27 @@ module FromMarkdownTests =
             [ p([], [ a([href:="http://a.com/"; title:="the title"], [ text("a") ])
                       text(" ")
                       a([href:="http://b.com/"], [ text("b") ]) ])]
+
+    [<Fact>]
+    let ``Should render IndirectImage`` () =
+        Markdown.Parse """![alt1][a] ![alt2] [b]  ![alt3 ref not found] [c]
+
+[a]: http://a.com/foo.jpg "title"
+[b]: http://a.com/bar.jpg
+        """
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ img([src:="http://a.com/foo.jpg"; alt:="alt1"; title:="title"])
+                      text(" ")
+                      img([src:="http://a.com/bar.jpg"; alt:="alt2"])
+                      text("  ")
+                      img([alt:="alt3 ref not found"])])]
+
+    [<Fact>]
+    let ``Should render DirectImage`` () =
+        Markdown.Parse """![alt1](http://a.com/foo.jpg)  ![alt2](http://a.com/bar.jpg "with title")"""
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ img([src:="http://a.com/foo.jpg"; alt:="alt1"])
+                      text("  ")
+                      img([src:="http://a.com/bar.jpg"; alt:="alt2"; title:="with title"]) ])]

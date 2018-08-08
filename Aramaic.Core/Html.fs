@@ -30,9 +30,11 @@ module Html =
 
         let inline (:=) name value = Attribute(name, value)
 
+        let alt = "alt"
         let bgcolor = "bgcolor"
         let href = "href"
         let name = "name"
+        let src = "src"
         let style = "style"
         let title = "title"
 
@@ -215,7 +217,16 @@ module Html =
             a( (href:=link) :: titleAttr, fromSpans ctx content)
         | IndirectLink(content, _, _) ->
             a([], fromSpans ctx content)
-        | AnchorLink(y) -> a([name:=y], [])
+        | AnchorLink(y) -> a([name:=y], [ text("&#160;") ])
+        | IndirectImage(alt', _, FSharp.Markdown.Html.LookupKey ctx.definedLinks (src', title'))
+        | DirectImage(alt', (src', title')) ->
+            let titleAttr : List<Attribute> =
+                title'
+                |> Option.map(fun t -> [ "title":=t ])
+                |> Option.defaultValue []
+            img((src:=src') :: (alt:=alt') :: (titleAttr))
+        | IndirectImage(alt', _, _) ->
+            img([alt:=alt'])
 
     and fromSpans (ctx : MarkdownCtx) (spans : MarkdownSpans) : List<Part> =
         spans |> List.map (fromSpan ctx)
