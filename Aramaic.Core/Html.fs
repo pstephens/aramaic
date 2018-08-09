@@ -32,11 +32,13 @@ module Html =
 
         let alt = "alt"
         let bgcolor = "bgcolor"
+        let classAttr = "class"
         let href = "href"
         let name = "name"
         let src = "src"
         let style = "style"
         let title = "title"
+
 
         let private booleanAttributes =
                 set [ "async"; "autocomplete"; "autofocus"; "autoplay"; "border"; "challenge"; "checked";
@@ -202,34 +204,38 @@ module Html =
     type MarkdownCtx =
         { definedLinks : IDictionary<string, string * option<string>>; }
 
-    let rec fromSpan (ctx : MarkdownCtx) (x: MarkdownSpan) : Part =
+    let rec fromSpan (ctx : MarkdownCtx) (x: MarkdownSpan) : List<Part> =
         match x with
-        | Literal(t) -> text(t)
-        | InlineCode(content) -> code([], [ text(content) ])
-        | Strong(content) -> strong([], fromSpans ctx content)
-        | Emphasis(content) -> em([], fromSpans ctx content)
+        | Literal(t) -> [ text(t) ]
+        | InlineCode(content) -> [ code([], [ text(content) ]) ]
+        | Strong(content) -> [ strong([], fromSpans ctx content) ]
+        | Emphasis(content) -> [ em([], fromSpans ctx content) ]
         | IndirectLink(content, _, FSharp.Markdown.Html.LookupKey ctx.definedLinks (link, title'))
         | DirectLink(content, (link, title')) ->
             let titleAttr : List<Attribute> =
                 title'
                 |> Option.map(fun t -> [ "title":=t ])
                 |> Option.defaultValue []
-            a( (href:=link) :: titleAttr, fromSpans ctx content)
+            [ a( (href:=link) :: titleAttr, fromSpans ctx content) ]
         | IndirectLink(content, _, _) ->
-            a([], fromSpans ctx content)
-        | AnchorLink(y) -> a([name:=y], [ text("&#160;") ])
+            [ a([], fromSpans ctx content) ]
+        | AnchorLink(y) -> [ a([name:=y], [ text("&#160;") ]) ]
         | IndirectImage(alt', _, FSharp.Markdown.Html.LookupKey ctx.definedLinks (src', title'))
         | DirectImage(alt', (src', title')) ->
             let titleAttr : List<Attribute> =
                 title'
                 |> Option.map(fun t -> [ "title":=t ])
                 |> Option.defaultValue []
-            img((src:=src') :: (alt:=alt') :: (titleAttr))
+            [ img((src:=src') :: (alt:=alt') :: (titleAttr)) ]
         | IndirectImage(alt', _, _) ->
-            img([alt:=alt'])
+            [ img([alt:=alt']) ]
+        | HardLineBreak -> [ br([]) ]
+        | LatexInlineMath(content) -> [ span([classAttr:="inline-latex"], [ text(content) ]) ]
+        | LatexDisplayMath(content) -> [ span([classAttr:="display-latex"], [ text(content) ]) ]
+        | EmbedSpans(lazySpans) -> lazySpans.Render() |> List.map (fromSpan ctx) |> List.concat
 
     and fromSpans (ctx : MarkdownCtx) (spans : MarkdownSpans) : List<Part> =
-        spans |> List.map (fromSpan ctx)
+        spans |> List.map (fromSpan ctx) |> List.concat
 
     let fromParagraph (ctx : MarkdownCtx) (par : MarkdownParagraph) : Part =
         match par with

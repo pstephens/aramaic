@@ -107,3 +107,42 @@ module FromMarkdownTests =
             [ p([], [ img([src:="http://a.com/foo.jpg"; alt:="alt1"])
                       text("  ")
                       img([src:="http://a.com/bar.jpg"; alt:="alt2"; title:="with title"]) ])]
+
+    [<Fact>]
+    let ``Should render HardLineBreak`` () =
+        Markdown.Parse "Line with two trailing spaces  \r\nThe next line"
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ text("Line with two trailing spaces")
+                      br([])
+                      text("The next line")])]
+
+    [<Fact>]
+    let ``Should render inline LaTex as span`` () =
+        Markdown.Parse """Some LaTex $E=mc^2$"""
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ text("Some LaTex ")
+                      span([classAttr:="inline-latex"], [ text("E=mc^2") ])])]
+
+    [<Fact>]
+    let ``Should render display LaTex as span`` () =
+        Markdown.Parse """Some display mode LaTex $$E=mc^2$$"""
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ text("Some display mode LaTex ")
+                      span([classAttr:="display-latex"], [ text("E=mc^2") ])])]
+
+    [<Fact>]
+    let ``Should render embedded spans`` () =
+        MarkdownDocument([ Paragraph [
+            Literal("Some text")
+            EmbedSpans { new MarkdownEmbedSpans with
+                            member this.Render() =  [ Literal("more "); Literal("words ") ] }
+            Literal("and the last words")]], null)
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ text("Some text")
+                      text("more ")
+                      text("words ")
+                      text("and the last words") ])]
