@@ -135,6 +135,7 @@ module Html =
     let inline h3 (attr, content) = Element("h3", attr, content)
     let inline h4 (attr, content) = Element("h4", attr, content)
     let inline h5 (attr, content) = Element("h5", attr, content)
+    let inline h6 (attr, content) = Element("h5", attr, content)
     let inline hr attr = VoidElement("hr", attr)
     let inline img attr = VoidElement("img", attr)
     let inline input attr = VoidElement("input", attr)
@@ -240,6 +241,10 @@ module Html =
     let fromParagraph (ctx : MarkdownCtx) (par : MarkdownParagraph) : Part =
         match par with
         | Heading(1, spans) -> h1([], fromSpans ctx spans)
+        | Heading(2, spans) -> h2([], fromSpans ctx spans)
+        | Heading(3, spans) -> h3([], fromSpans ctx spans)
+        | Heading(4, spans) -> h4([], fromSpans ctx spans)
+        | Heading(_, spans) -> h5([], fromSpans ctx spans)
         | Paragraph(spans) -> p([], fromSpans ctx spans)
 
     let fromMarkdown (doc : MarkdownDocument) : Document =

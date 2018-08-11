@@ -33,6 +33,18 @@ module FromMarkdownTests =
         |> exerciseTransform
         |> should equal [ h1([], [ text("this is a heading") ]) ]
 
+    [<Theory>]
+    [<InlineData("#", "h1")>]
+    [<InlineData("##", "h2")>]
+    [<InlineData("###", "h3")>]
+    [<InlineData("####", "h4")>]
+    [<InlineData("#####", "h5")>]
+    [<InlineData("######", "h5")>]
+    let ``Should render Hn heading elements`` (headPrefix, expectedElement) =
+        Markdown.Parse (headPrefix + "_the heading_")
+        |> exerciseTransform
+        |> should equal [ Element(expectedElement, [], [ em([], [ text("the heading") ]) ]) ]
+
     [<Fact>]
     let ``Should render InlineCode`` () =
         Markdown.Parse "```this is some code```"
