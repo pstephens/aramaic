@@ -143,6 +143,7 @@ module Html =
     let inline link attr = VoidElement("link", attr)
     let inline meta attr = VoidElement("meta", attr)
     let inline p (attr, content) = Element("p", attr, content)
+    let inline pre (attr, content) = Element("pre", attr, content)
     let inline param attr = VoidElement("param", attr)
     let inline script (attr, str) = RawTextElement("script", attr, str)
     let inline source attr = VoidElement("source", attr)
@@ -245,6 +246,10 @@ module Html =
         | Heading(3, spans) -> h3([], fromSpans ctx spans)
         | Heading(4, spans) -> h4([], fromSpans ctx spans)
         | Heading(_, spans) -> h5([], fromSpans ctx spans)
+        | CodeBlock(code', lang, _) when String.IsNullOrWhiteSpace(lang) ->
+            pre([], [ code([], [ text(code') ]) ])
+        | CodeBlock(code', lang, _) ->
+            pre([], [ code([classAttr:= sprintf "lang-%s" lang], [ text(code') ]) ])
         | Paragraph(spans) -> p([], fromSpans ctx spans)
 
     let fromMarkdown (doc : MarkdownDocument) : Document =

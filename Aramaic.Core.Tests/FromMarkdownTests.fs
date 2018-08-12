@@ -46,8 +46,28 @@ module FromMarkdownTests =
         |> should equal [ Element(expectedElement, [], [ em([], [ text("the heading") ]) ]) ]
 
     [<Fact>]
+    let ``Should render Code block`` () =
+        Markdown.Parse "```
+this is a block of code
+with a second line
+```"
+        |> exerciseTransform
+        |> should equal [ pre([], [ code([], [ text("""this is a block of code
+with a second line
+""") ])])]
+
+    [<Fact>]
+    let ``Should render Code block with annotated language`` () =
+        Markdown.Parse """```fsharp
+let foo = 123
+```"""
+        |> exerciseTransform
+        |> should equal [ pre([], [ code([classAttr:="lang-fsharp"], [ text("""let foo = 123
+""") ])])]
+
+    [<Fact>]
     let ``Should render InlineCode`` () =
-        Markdown.Parse "```this is some code```"
+        Markdown.Parse "`this is some code`"
         |> exerciseTransform
         |> should equal [ p([], [ code([], [ text("this is some code") ]) ]) ]
 
