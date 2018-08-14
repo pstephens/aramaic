@@ -112,6 +112,7 @@ module Html =
         | RawTextElement of string * List<Attribute.Attribute> * string
         | RCData of string * List<Attribute.Attribute> * string
         | Text of string
+        | HtmlLiteral of string
 
     type Document = List<Part>
 
@@ -197,6 +198,7 @@ module Html =
         wr.Write(name)
         wr.Write(">")
     | Text(str) -> wr.Write(str)
+    | HtmlLiteral(str) -> wr.Write(str)
 
     let render (opt: RenderOptions) (wr: TextWriter) (doc: Document) =
         doc |> List.iter (renderPart wr)
@@ -251,6 +253,7 @@ module Html =
         | CodeBlock(code', lang, _) ->
             pre([], [ code([classAttr:= sprintf "lang-%s" lang], [ text(code') ]) ])
         | Paragraph(spans) -> p([], fromSpans ctx spans)
+        | InlineBlock(content) -> HtmlLiteral(content)
 
     let fromMarkdown (doc : MarkdownDocument) : Document =
         let ctx = { definedLinks = doc.DefinedLinks }

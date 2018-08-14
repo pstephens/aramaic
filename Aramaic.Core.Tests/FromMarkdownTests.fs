@@ -167,14 +167,28 @@ let foo = 123
 
     [<Fact>]
     let ``Should render embedded spans`` () =
-        MarkdownDocument([ Paragraph [
-            Literal("Some text")
-            EmbedSpans { new MarkdownEmbedSpans with
-                            member this.Render() =  [ Literal("more "); Literal("words ") ] }
-            Literal("and the last words")]], null)
+        MarkdownDocument(
+            [ Paragraph [
+                Literal("Some text")
+                EmbedSpans { new MarkdownEmbedSpans with
+                                member this.Render() =  [ Literal("more "); Literal("words ") ] }
+                Literal("and the last words")]], null)
         |> exerciseTransform
         |> should equal
             [ p([], [ text("Some text")
                       text("more ")
                       text("words ")
                       text("and the last words") ])]
+
+    [<Fact>]
+    let ``Should render html literals`` () =
+        Markdown.Parse """Some stuff
+
+<b>bolded</b>
+
+more stuff"""
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ text("Some stuff") ])
+              HtmlLiteral("<b>bolded</b>")
+              p([], [ text("more stuff")])]

@@ -98,6 +98,14 @@ let ``Text should render as plain text`` () =
     [ text("this is some text") ] |> exerciseRender |> should equal "this is some text"
 
 [<Fact>]
+let ``HtmlLiteral should render as is`` () =
+    [ div([], [ text("abc") ])
+      HtmlLiteral("<span>Some more stuff</span>")
+      p([], [ text("def") ]) ]
+    |> exerciseRender
+    |> should equal """<div>abc</div><span>Some more stuff</span><p>def</p>"""
+
+[<Fact>]
 let ``renderAttributes should render regular attributes`` () =
     [ "foo" := "bar"; "a" := "b" ]
     |> exerciseRenderAttributes
