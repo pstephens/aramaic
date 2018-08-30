@@ -66,6 +66,47 @@ let foo = 123
 """) ])])]
 
     [<Fact>]
+    let ``Should render unordered list`` () =
+        """+ the first bullet
++ the second bullet"""
+        |> Markdown.Parse
+        |> exerciseTransform
+        |> should equal
+            [ ul([],
+                [ li([], [ text("the first bullet") ])
+                  li([], [ text("the second bullet") ])])]
+
+    [<Fact>]
+    let ``Should render nested unordered list`` () =
+        """* the first bullet
+    * sub-point a
+    * sub-point b"""
+        |> Markdown.Parse
+        |> exerciseTransform
+        |> should equal
+            [ ul([],
+                [ li([],
+                    [ text("the first bullet")
+                      ul([],
+                        [ li([], [ text("sub-point a") ])
+                          li([], [ text("sub-point b") ]) ]) ]) ]) ]
+
+    [<Fact>]
+    let ``Should render nested ordered list`` () =
+        """1. the first bullet
+    1. sub-point a
+    2. sub-point b"""
+        |> Markdown.Parse
+        |> exerciseTransform
+        |> should equal
+            [ ol([],
+                [ li([],
+                    [ text("the first bullet")
+                      ol([],
+                        [ li([], [ text("sub-point a") ])
+                          li([], [ text("sub-point b") ]) ]) ]) ]) ]
+
+    [<Fact>]
     let ``Should render InlineCode`` () =
         Markdown.Parse "`this is some code`"
         |> exerciseTransform

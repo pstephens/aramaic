@@ -141,11 +141,13 @@ module Html =
     let inline img attr = VoidElement("img", attr)
     let inline input attr = VoidElement("input", attr)
     let inline keygen attr = VoidElement("keygen", attr)
+    let inline li (attr, content) = Element("li", attr, content)
     let inline link attr = VoidElement("link", attr)
     let inline meta attr = VoidElement("meta", attr)
     let inline p (attr, content) = Element("p", attr, content)
     let inline pre (attr, content) = Element("pre", attr, content)
     let inline param attr = VoidElement("param", attr)
+    let inline ol (attr, content) = Element("ol", attr, content)
     let inline script (attr, str) = RawTextElement("script", attr, str)
     let inline source attr = VoidElement("source", attr)
     let inline span (attr, content) = Element("span", attr, content)
@@ -154,6 +156,7 @@ module Html =
     let inline titleEl (attr, str) = RCData("title", attr, str)
     let inline textarea (attr, str) = RCData("textarea", attr, str)
     let inline track attr = VoidElement("track", attr)
+    let inline ul (attr, content) = Element("ul", attr, content)
     let inline wbr attr = VoidElement("wbr", attr)
 
     let inline text str = Text(str)
@@ -241,20 +244,34 @@ module Html =
     and fromSpans (ctx : MarkdownCtx) (spans : MarkdownSpans) : List<Part> =
         spans |> List.map (fromSpan ctx) |> List.concat
 
-    let fromParagraph (ctx : MarkdownCtx) (par : MarkdownParagraph) : Part =
+    and fromListItem ctx (pars : MarkdownParagraphs) : Part =
+        li([],
+            pars
+            |> List.map (fromParagraph ctx)
+            |> List.concat)
+
+    and fromListItems ctx items =
+        items |> List.map (fromListItem ctx)
+
+    and fromParagraph (ctx : MarkdownCtx) (par : MarkdownParagraph) : List<Part> =
         match par with
-        | Heading(1, spans) -> h1([], fromSpans ctx spans)
-        | Heading(2, spans) -> h2([], fromSpans ctx spans)
-        | Heading(3, spans) -> h3([], fromSpans ctx spans)
-        | Heading(4, spans) -> h4([], fromSpans ctx spans)
-        | Heading(_, spans) -> h5([], fromSpans ctx spans)
+        | Heading(1, spans) -> [ h1([], fromSpans ctx spans) ]
+        | Heading(2, spans) -> [ h2([], fromSpans ctx spans) ]
+        | Heading(3, spans) -> [ h3([], fromSpans ctx spans) ]
+        | Heading(4, spans) -> [ h4([], fromSpans ctx spans) ]
+        | Heading(_, spans) -> [ h5([], fromSpans ctx spans) ]
         | CodeBlock(code', lang, _) when String.IsNullOrWhiteSpace(lang) ->
-            pre([], [ code([], [ text(code') ]) ])
+            [ pre([], [ code([], [ text(code') ]) ]) ]
         | CodeBlock(code', lang, _) ->
-            pre([], [ code([classAttr:= sprintf "lang-%s" lang], [ text(code') ]) ])
-        | Paragraph(spans) -> p([], fromSpans ctx spans)
-        | InlineBlock(content) -> HtmlLiteral(content)
+            [ pre([], [ code([classAttr:= sprintf "lang-%s" lang], [ text(code') ]) ]) ]
+        | Paragraph(spans) -> [ p([], fromSpans ctx spans) ]
+        | InlineBlock(content) -> [ HtmlLiteral(content) ]
+        | ListBlock(Unordered, items) -> [ ul([], fromListItems ctx items) ]
+        | ListBlock(Ordered, items) -> [ ol([], fromListItems ctx items) ]
+        | Span(spans) -> fromSpans ctx spans
 
     let fromMarkdown (doc : MarkdownDocument) : Document =
         let ctx = { definedLinks = doc.DefinedLinks }
-        doc.Paragraphs |> List.map (fromParagraph ctx)
+        doc.Paragraphs
+        |> List.map (fromParagraph ctx)
+        |> List.concat
