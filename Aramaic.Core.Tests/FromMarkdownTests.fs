@@ -107,6 +107,17 @@ let foo = 123
                           li([], [ text("sub-point b") ]) ]) ]) ]) ]
 
     [<Fact>]
+    let ``Should render block quote`` () =
+        """> this is the first line
+> and then the second line"""
+        |> Markdown.Parse
+        |> exerciseTransform
+        |> should equal
+            [ blockquote([],
+                [ p([], [ text("""this is the first line
+and then the second line""")])])]
+
+    [<Fact>]
     let ``Should render InlineCode`` () =
         Markdown.Parse "`this is some code`"
         |> exerciseTransform

@@ -123,6 +123,7 @@ module Html =
     let inline a (attr, content) = Element("a", attr, content)
     let inline area attr = VoidElement("area", attr)
     let inline baseEl attr = VoidElement("base", attr)
+    let inline blockquote (attr, content) = Element("blockquote", attr, content)
     let inline body (attr, content) = Element("body", attr, content)
     let inline br attr = VoidElement("br", attr)
     let inline col attr = VoidElement("col", attr)
@@ -268,10 +269,14 @@ module Html =
         | InlineBlock(content) -> [ HtmlLiteral(content) ]
         | ListBlock(Unordered, items) -> [ ul([], fromListItems ctx items) ]
         | ListBlock(Ordered, items) -> [ ol([], fromListItems ctx items) ]
+        | QuotedBlock(body) -> [ blockquote([], formatParagraphs ctx body) ]
         | Span(spans) -> fromSpans ctx spans
+
+    and formatParagraphs (ctx : MarkdownCtx) (pars : MarkdownParagraphs) : List<Part> =
+        pars
+        |> List.map (fromParagraph ctx)
+        |> List.concat
 
     let fromMarkdown (doc : MarkdownDocument) : Document =
         let ctx = { definedLinks = doc.DefinedLinks }
-        doc.Paragraphs
-        |> List.map (fromParagraph ctx)
-        |> List.concat
+        formatParagraphs ctx doc.Paragraphs
