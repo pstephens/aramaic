@@ -129,6 +129,8 @@ module Html =
     let inline col attr = VoidElement("col", attr)
     let inline command attr = VoidElement("command", attr)
     let inline code (attr, content) = Element("code", attr, content)
+    let inline colgroup (attr, content) = Element("colgroup", attr, content)
+
     let inline div (attr, content) = Element("div", attr, content)
     let inline em (attr, content) = Element("em", attr, content)
     let inline embed attr = VoidElement("embed", attr)
@@ -154,7 +156,13 @@ module Html =
     let inline span (attr, content) = Element("span", attr, content)
     let inline strong (attr, content) = Element("strong", attr, content)
     let inline styleEl (attr, str) = RawTextElement("style", attr, str)
+    let inline table (attr, content) = Element("table", attr, content)
+    let inline tbody (attr, content) = Element("tbody", attr, content)
+    let inline td (attr, content) = Element("td", attr, content)
+    let inline th (attr, content) = Element("th", attr, content)
+    let inline thead (attr, content) = Element("thead", attr, content)
     let inline titleEl (attr, str) = RCData("title", attr, str)
+    let inline tr (attr, content) = Element("tr", attr, content)
     let inline textarea (attr, str) = RCData("textarea", attr, str)
     let inline track attr = VoidElement("track", attr)
     let inline ul (attr, content) = Element("ul", attr, content)
@@ -212,6 +220,8 @@ module Html =
     type MarkdownCtx =
         { definedLinks : IDictionary<string, string * option<string>>; }
 
+    type ElementFn = List<Attribute> * List<Part> -> Part
+
     let rec fromSpan (ctx : MarkdownCtx) (x: MarkdownSpan) : List<Part> =
         match x with
         | Literal(t) -> [ text(t) ]
@@ -240,7 +250,7 @@ module Html =
         | HardLineBreak -> [ br([]) ]
         | LatexInlineMath(content) -> [ span([classAttr:="inline-latex"], [ text(content) ]) ]
         | LatexDisplayMath(content) -> [ span([classAttr:="display-latex"], [ text(content) ]) ]
-        | EmbedSpans(lazySpans) -> lazySpans.Render() |> List.map (fromSpan ctx) |> List.concat
+        | EmbedSpans(lazySpans) -> lazySpans.Render() |> fromSpans ctx
 
     and fromSpans (ctx : MarkdownCtx) (spans : MarkdownSpans) : List<Part> =
         spans |> List.map (fromSpan ctx) |> List.concat
@@ -253,6 +263,37 @@ module Html =
 
     and fromListItems ctx items =
         items |> List.map (fromListItem ctx)
+
+    and fromCell (ctx : MarkdownCtx) (cellFn : ElementFn)  (cell : List<Attribute> * MarkdownParagraphs) : Part =
+        match cell with
+        | (attrs, [ Paragraph(spans) ]) -> cellFn(attrs, fromSpans ctx spans)
+        | (attrs, complexParagraphs) -> cellFn(attrs, fromParagraphs ctx complexParagraphs)
+
+    and fromRow (ctx : MarkdownCtx) (cellFn : ElementFn) (alignments : List<List<Attribute>>) (row: MarkdownTableRow) : Part =
+        tr([],
+            row
+            |> List.zip alignments
+            |> List.map (fromCell ctx cellFn))
+
+    and fromHeaders (ctx : MarkdownCtx) (headers : Option<MarkdownTableRow>)
+        (alignments : List<List<Attribute>>) : List<Part> =
+        match headers with
+        | Some(row) -> [ thead([], [ fromRow ctx th alignments row ] ) ]
+        | None -> []
+
+    and fromTable (ctx : MarkdownCtx) (headers : Option<MarkdownTableRow>)
+        (alignments : List<MarkdownColumnAlignment>) (rows : List<MarkdownTableRow>) : List<Part> =
+        let alignmentAttrs : List<List<Attribute>> =
+            alignments
+            |> List.map (function
+                | AlignDefault -> []
+                | AlignLeft -> [ style:="text-align: left" ]
+                | AlignCenter -> [ style:="text-align: center" ]
+                | AlignRight -> [ style:="text-align: right" ])
+        [ table([],
+            [ fromHeaders ctx headers alignmentAttrs
+              rows |> List.map (fromRow ctx td alignmentAttrs)]
+            |> List.concat) ]
 
     and fromParagraph (ctx : MarkdownCtx) (par : MarkdownParagraph) : List<Part> =
         match par with
@@ -269,14 +310,18 @@ module Html =
         | InlineBlock(content) -> [ HtmlLiteral(content) ]
         | ListBlock(Unordered, items) -> [ ul([], fromListItems ctx items) ]
         | ListBlock(Ordered, items) -> [ ol([], fromListItems ctx items) ]
-        | QuotedBlock(body) -> [ blockquote([], formatParagraphs ctx body) ]
+        | QuotedBlock(body) -> [ blockquote([], fromParagraphs ctx body) ]
         | Span(spans) -> fromSpans ctx spans
+        | TableBlock(headers, alignments, rows) -> fromTable ctx headers alignments rows
+        | HorizontalRule(_) -> [ hr([]) ]
+        | EmbedParagraphs(paragraphs) -> paragraphs.Render() |> fromParagraphs ctx
+        | LatexBlock(items) -> [ div([classAttr:="latex"], items |> List.map text) ]
 
-    and formatParagraphs (ctx : MarkdownCtx) (pars : MarkdownParagraphs) : List<Part> =
+    and fromParagraphs (ctx : MarkdownCtx) (pars : MarkdownParagraphs) : List<Part> =
         pars
         |> List.map (fromParagraph ctx)
         |> List.concat
 
     let fromMarkdown (doc : MarkdownDocument) : Document =
         let ctx = { definedLinks = doc.DefinedLinks }
-        formatParagraphs ctx doc.Paragraphs
+        fromParagraphs ctx doc.Paragraphs

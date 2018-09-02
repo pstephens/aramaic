@@ -118,6 +118,72 @@ let foo = 123
 and then the second line""")])])]
 
     [<Fact>]
+    let ``Should render simple table`` () =
+        """ah|bh
+--|--
+a1|b1
+a2|b2"""
+        |> Markdown.Parse
+        |> exerciseTransform
+        |> should equal
+            [ table([],
+                [ thead([], [ tr([], [ th([], [ text("ah") ]); th([], [ text("bh") ]) ]) ])
+                  tr([], [ td([], [ text("a1") ]); td([], [ text("b1") ]) ])
+                  tr([], [ td([], [ text("a2") ]); td([], [ text("b2") ]) ]) ]) ]
+
+    [<Fact>]
+    let ``Should render a table with justification hints`` () =
+        """ah |bh |ch
+:--|:-:|--:
+a1 |b1 |c1
+a2 |b2 |c2 """
+        |> Markdown.Parse
+        |> exerciseTransform
+        |> should equal
+            [ table([],
+                [ thead([],
+                    [ tr([],
+                        [ th([ style:="text-align: left" ], [ text("ah") ])
+                          th([ style:="text-align: center" ], [ text("bh") ])
+                          th([ style:="text-align: right" ], [ text("ch") ]) ]) ])
+                  tr([],
+                    [ td([ style:="text-align: left" ], [ text("a1") ])
+                      td([ style:="text-align: center" ], [ text("b1") ])
+                      td([ style:="text-align: right" ], [ text("c1") ]) ])
+                  tr([],
+                    [ td([ style:="text-align: left" ], [ text("a2") ])
+                      td([ style:="text-align: center" ], [ text("b2") ])
+                      td([ style:="text-align: right" ], [ text("c2") ]) ]) ]) ]
+
+    [<Fact>]
+    let ``Should render horizontal rule`` () =
+        """---"""
+        |> Markdown.Parse
+        |> exerciseTransform
+        |> should equal
+            [ hr([]) ]
+
+    [<Fact>]
+    let ``Should render embedded paragraphs`` () =
+        MarkdownDocument(
+            [ EmbedParagraphs { new MarkdownEmbedParagraphs with
+                                    member this.Render() =
+                                        [ Paragraph([ Literal("Para 1") ])
+                                          Paragraph([ Literal("Para 2") ]) ] } ], null)
+        |> exerciseTransform
+        |> should equal
+            [ p([], [ text("Para 1") ])
+              p([], [ text("Para 2") ]) ]
+
+    [<Fact>]
+    let ``Should render LaTex block`` () =
+        Markdown.Parse """$$$
+E=mc^2"""
+        |> exerciseTransform
+        |> should equal
+            [ div([classAttr:="latex"], [ text("E=mc^2")]) ]
+
+    [<Fact>]
     let ``Should render InlineCode`` () =
         Markdown.Parse "`this is some code`"
         |> exerciseTransform
