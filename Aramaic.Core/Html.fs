@@ -19,6 +19,7 @@ limitations under the License.
 namespace Aramaic.Core
 
 open System.IO
+open FSharp.Markdown
 
 module Html =
     open System
@@ -27,11 +28,17 @@ module Html =
         type Attribute =
             | Attribute of string * string
 
-        let (:=) name value = Attribute(name, value)
+        let inline (:=) name value = Attribute(name, value)
 
+        let alt = "alt"
         let bgcolor = "bgcolor"
+        let classAttr = "class"
         let href = "href"
+        let name = "name"
+        let src = "src"
         let style = "style"
+        let title = "title"
+
 
         let private booleanAttributes =
                 set [ "async"; "autocomplete"; "autofocus"; "autoplay"; "border"; "challenge"; "checked";
@@ -95,6 +102,9 @@ module Html =
             renderAttributes wr tail
         | [] -> ()
 
+    open Attribute
+
+
     type Part =
         | Doctype of string
         | Element of string * List<Attribute.Attribute> * List<Part>
@@ -102,6 +112,7 @@ module Html =
         | RawTextElement of string * List<Attribute.Attribute> * string
         | RCData of string * List<Attribute.Attribute> * string
         | Text of string
+        | HtmlLiteral of string
 
     type Document = List<Part>
 
@@ -109,32 +120,55 @@ module Html =
     let doctype str = Doctype(str)
     let html (attr, content) = Element("html", attr, content)
 
-    let area attr = VoidElement("area", attr)
-    let baseEl attr = VoidElement("base", attr)
-    let body (attr, content) = Element("body", attr, content)
-    let br attr = VoidElement("br", attr)
-    let col attr = VoidElement("col", attr)
-    let command attr = VoidElement("command", attr)
-    let div (attr, content) = Element("div", attr, content)
-    let embed attr = VoidElement("embed", attr)
-    let hr attr = VoidElement("hr", attr)
-    let img attr = VoidElement("img", attr)
-    let input attr = VoidElement("input", attr)
-    let keygen attr = VoidElement("keygen", attr)
-    let link attr = VoidElement("link", attr)
-    let meta attr = VoidElement("meta", attr)
-    let p (attr, content) = Element("p", attr, content)
-    let param attr = VoidElement("param", attr)
-    let script (attr, str) = RawTextElement("script", attr, str)
-    let source attr = VoidElement("source", attr)
-    let span (attr, content) = Element("span", attr, content)
-    let styleEl (attr, str) = RawTextElement("style", attr, str)
-    let title (attr, str) = RCData("title", attr, str)
-    let textarea (attr, str) = RCData("textarea", attr, str)
-    let track attr = VoidElement("track", attr)
-    let wbr attr = VoidElement("wbr", attr)
+    let inline a (attr, content) = Element("a", attr, content)
+    let inline area attr = VoidElement("area", attr)
+    let inline baseEl attr = VoidElement("base", attr)
+    let inline blockquote (attr, content) = Element("blockquote", attr, content)
+    let inline body (attr, content) = Element("body", attr, content)
+    let inline br attr = VoidElement("br", attr)
+    let inline col attr = VoidElement("col", attr)
+    let inline command attr = VoidElement("command", attr)
+    let inline code (attr, content) = Element("code", attr, content)
+    let inline colgroup (attr, content) = Element("colgroup", attr, content)
 
-    let text str = Text(str)
+    let inline div (attr, content) = Element("div", attr, content)
+    let inline em (attr, content) = Element("em", attr, content)
+    let inline embed attr = VoidElement("embed", attr)
+    let inline h1 (attr, content) = Element("h1", attr, content)
+    let inline h2 (attr, content) = Element("h2", attr, content)
+    let inline h3 (attr, content) = Element("h3", attr, content)
+    let inline h4 (attr, content) = Element("h4", attr, content)
+    let inline h5 (attr, content) = Element("h5", attr, content)
+    let inline h6 (attr, content) = Element("h5", attr, content)
+    let inline hr attr = VoidElement("hr", attr)
+    let inline img attr = VoidElement("img", attr)
+    let inline input attr = VoidElement("input", attr)
+    let inline keygen attr = VoidElement("keygen", attr)
+    let inline li (attr, content) = Element("li", attr, content)
+    let inline link attr = VoidElement("link", attr)
+    let inline meta attr = VoidElement("meta", attr)
+    let inline p (attr, content) = Element("p", attr, content)
+    let inline pre (attr, content) = Element("pre", attr, content)
+    let inline param attr = VoidElement("param", attr)
+    let inline ol (attr, content) = Element("ol", attr, content)
+    let inline script (attr, str) = RawTextElement("script", attr, str)
+    let inline source attr = VoidElement("source", attr)
+    let inline span (attr, content) = Element("span", attr, content)
+    let inline strong (attr, content) = Element("strong", attr, content)
+    let inline styleEl (attr, str) = RawTextElement("style", attr, str)
+    let inline table (attr, content) = Element("table", attr, content)
+    let inline tbody (attr, content) = Element("tbody", attr, content)
+    let inline td (attr, content) = Element("td", attr, content)
+    let inline th (attr, content) = Element("th", attr, content)
+    let inline thead (attr, content) = Element("thead", attr, content)
+    let inline titleEl (attr, str) = RCData("title", attr, str)
+    let inline tr (attr, content) = Element("tr", attr, content)
+    let inline textarea (attr, str) = RCData("textarea", attr, str)
+    let inline track attr = VoidElement("track", attr)
+    let inline ul (attr, content) = Element("ul", attr, content)
+    let inline wbr attr = VoidElement("wbr", attr)
+
+    let inline text str = Text(str)
 
     type RenderOptions = { indent: string; newline: string }
     let emptyRenderOptions = { indent = ""; newline = "" }
@@ -176,6 +210,118 @@ module Html =
         wr.Write(name)
         wr.Write(">")
     | Text(str) -> wr.Write(str)
+    | HtmlLiteral(str) -> wr.Write(str)
 
     let render (opt: RenderOptions) (wr: TextWriter) (doc: Document) =
-        doc |> List.iter (fun p -> renderPart wr p)
+        doc |> List.iter (renderPart wr)
+
+    type IDictionary<'a, 'b> = System.Collections.Generic.IDictionary<'a, 'b>
+
+    type MarkdownCtx =
+        { definedLinks : IDictionary<string, string * option<string>>; }
+
+    type ElementFn = List<Attribute> * List<Part> -> Part
+
+    let rec fromSpan (ctx : MarkdownCtx) (x: MarkdownSpan) : List<Part> =
+        match x with
+        | Literal(t) -> [ text(t) ]
+        | InlineCode(content) -> [ code([], [ text(content) ]) ]
+        | Strong(content) -> [ strong([], fromSpans ctx content) ]
+        | Emphasis(content) -> [ em([], fromSpans ctx content) ]
+        | IndirectLink(content, _, FSharp.Markdown.Html.LookupKey ctx.definedLinks (link, title'))
+        | DirectLink(content, (link, title')) ->
+            let titleAttr : List<Attribute> =
+                title'
+                |> Option.map(fun t -> [ "title":=t ])
+                |> Option.defaultValue []
+            [ a( (href:=link) :: titleAttr, fromSpans ctx content) ]
+        | IndirectLink(content, _, _) ->
+            [ a([], fromSpans ctx content) ]
+        | AnchorLink(y) -> [ a([name:=y], [ text("&#160;") ]) ]
+        | IndirectImage(alt', _, FSharp.Markdown.Html.LookupKey ctx.definedLinks (src', title'))
+        | DirectImage(alt', (src', title')) ->
+            let titleAttr : List<Attribute> =
+                title'
+                |> Option.map(fun t -> [ "title":=t ])
+                |> Option.defaultValue []
+            [ img((src:=src') :: (alt:=alt') :: (titleAttr)) ]
+        | IndirectImage(alt', _, _) ->
+            [ img([alt:=alt']) ]
+        | HardLineBreak -> [ br([]) ]
+        | LatexInlineMath(content) -> [ span([classAttr:="inline-latex"], [ text(content) ]) ]
+        | LatexDisplayMath(content) -> [ span([classAttr:="display-latex"], [ text(content) ]) ]
+        | EmbedSpans(lazySpans) -> lazySpans.Render() |> fromSpans ctx
+
+    and fromSpans (ctx : MarkdownCtx) (spans : MarkdownSpans) : List<Part> =
+        spans |> List.map (fromSpan ctx) |> List.concat
+
+    and fromListItem ctx (pars : MarkdownParagraphs) : Part =
+        li([],
+            pars
+            |> List.map (fromParagraph ctx)
+            |> List.concat)
+
+    and fromListItems ctx items =
+        items |> List.map (fromListItem ctx)
+
+    and fromCell (ctx : MarkdownCtx) (cellFn : ElementFn)  (cell : List<Attribute> * MarkdownParagraphs) : Part =
+        match cell with
+        | (attrs, [ Paragraph(spans) ]) -> cellFn(attrs, fromSpans ctx spans)
+        | (attrs, complexParagraphs) -> cellFn(attrs, fromParagraphs ctx complexParagraphs)
+
+    and fromRow (ctx : MarkdownCtx) (cellFn : ElementFn) (alignments : List<List<Attribute>>) (row: MarkdownTableRow) : Part =
+        tr([],
+            row
+            |> List.zip alignments
+            |> List.map (fromCell ctx cellFn))
+
+    and fromHeaders (ctx : MarkdownCtx) (headers : Option<MarkdownTableRow>)
+        (alignments : List<List<Attribute>>) : List<Part> =
+        match headers with
+        | Some(row) -> [ thead([], [ fromRow ctx th alignments row ] ) ]
+        | None -> []
+
+    and fromTable (ctx : MarkdownCtx) (headers : Option<MarkdownTableRow>)
+        (alignments : List<MarkdownColumnAlignment>) (rows : List<MarkdownTableRow>) : List<Part> =
+        let alignmentAttrs : List<List<Attribute>> =
+            alignments
+            |> List.map (function
+                | AlignDefault -> []
+                | AlignLeft -> [ style:="text-align: left" ]
+                | AlignCenter -> [ style:="text-align: center" ]
+                | AlignRight -> [ style:="text-align: right" ])
+        [ table([],
+            [ fromHeaders ctx headers alignmentAttrs
+              rows |> List.map (fromRow ctx td alignmentAttrs)]
+            |> List.concat) ]
+
+    and fromParagraph (ctx : MarkdownCtx) (par : MarkdownParagraph) : List<Part> =
+        match par with
+        | Heading(1, spans) -> [ h1([], fromSpans ctx spans) ]
+        | Heading(2, spans) -> [ h2([], fromSpans ctx spans) ]
+        | Heading(3, spans) -> [ h3([], fromSpans ctx spans) ]
+        | Heading(4, spans) -> [ h4([], fromSpans ctx spans) ]
+        | Heading(_, spans) -> [ h5([], fromSpans ctx spans) ]
+        | CodeBlock(code', lang, _) when String.IsNullOrWhiteSpace(lang) ->
+            [ pre([], [ code([], [ text(code') ]) ]) ]
+        | CodeBlock(code', lang, _) ->
+            [ pre([], [ code([classAttr:= sprintf "lang-%s" lang], [ text(code') ]) ]) ]
+        | Paragraph(spans) -> [ p([], fromSpans ctx spans) ]
+        | InlineBlock(content) -> [ HtmlLiteral(content) ]
+        | ListBlock(Unordered, items) -> [ ul([], fromListItems ctx items) ]
+        | ListBlock(Ordered, items) -> [ ol([], fromListItems ctx items) ]
+        | QuotedBlock(body) -> [ blockquote([], fromParagraphs ctx body) ]
+        | Span(spans) -> fromSpans ctx spans
+        | TableBlock(headers, alignments, rows) -> fromTable ctx headers alignments rows
+        | HorizontalRule(_) -> [ hr([]) ]
+        | EmbedParagraphs(paragraphs) -> paragraphs.Render() |> fromParagraphs ctx
+        | LatexBlock(items) -> [ div([classAttr:="latex"], items |> List.map text) ]
+
+    and fromParagraphs (ctx : MarkdownCtx) (pars : MarkdownParagraphs) : List<Part> =
+        pars
+        |> List.map (fromParagraph ctx)
+        |> List.concat
+
+    let fromMarkdown (doc : MarkdownDocument) : Document =
+        let ctx = { definedLinks = doc.DefinedLinks }
+        fromParagraphs ctx doc.Paragraphs

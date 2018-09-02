@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="RenderTests.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="FromMarkdownTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FsUnit.xUnit" Version="3.1.0" />

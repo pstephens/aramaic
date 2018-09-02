@@ -83,19 +83,27 @@ let ``Raw text element should render attributes`` () =
 
 [<Fact>]
 let ``RCData element should render start tag, end tag, and content`` () =
-    [ title([], "Lions, Tigers, & Bears") ]
+    [ titleEl([], "Lions, Tigers, & Bears") ]
     |> exerciseRender
     |> should equal "<title>Lions, Tigers, & Bears</title>"
 
 [<Fact>]
 let ``RCData element should render attributes`` () =
-    [ title([ "foo":="bar" ], "This is a title") ]
+    [ titleEl([ "foo":="bar" ], "This is a title") ]
     |> exerciseRender
     |> should equal "<title foo=bar>This is a title</title>"
 
 [<Fact>]
 let ``Text should render as plain text`` () =
     [ text("this is some text") ] |> exerciseRender |> should equal "this is some text"
+
+[<Fact>]
+let ``HtmlLiteral should render as is`` () =
+    [ div([], [ text("abc") ])
+      HtmlLiteral("<span>Some more stuff</span>")
+      p([], [ text("def") ]) ]
+    |> exerciseRender
+    |> should equal """<div>abc</div><span>Some more stuff</span><p>def</p>"""
 
 [<Fact>]
 let ``renderAttributes should render regular attributes`` () =
